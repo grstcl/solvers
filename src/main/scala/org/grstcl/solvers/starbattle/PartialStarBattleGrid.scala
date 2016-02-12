@@ -1,14 +1,39 @@
-package org.grstcl.solvers
+package org.grstcl.solvers.starbattle
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
+import scala.{Boolean => ActualBoolean}
+
+import org.grstcl.solvers.PuzzleGrid
+
+import PartialStarBattleGrid._
+
+object PartialStarBattleGrid
+{
+  type Boolean = Option[Unit]
+
+  implicit def forwardConversion(b: ActualBoolean): Boolean =
+  {
+    b match
+    {
+      case true => Some(Unit)
+      case false => None
+    }
+  }
+
+  implicit def backwardConversion(b: Boolean): ActualBoolean =
+  {
+    b.nonEmpty
+  }
+}
 
 /**
   * Created by gsclark on 2/8/16.
   */
 class PartialStarBattleGrid private(val puzzle: StarBattlePuzzle,
-                                    private val values: Map[(Int, Int), Boolean])
-  extends Iterable[((Int, Int), Boolean)] {
+                                    protected val values: Map[(Int, Int), Boolean])
+  extends PuzzleGrid[Unit, StarBattlePuzzle] {
+  
   def get(rc: (Int, Int)): Option[Boolean] = values.get(rc)
 
   override def iterator = values.iterator
@@ -35,11 +60,11 @@ class PartialStarBattleGrid private(val puzzle: StarBattlePuzzle,
   }
 
   def star(row: Int, col: Int): PartialStarBattleGrid = {
-    ((this +((row, col), true)) ++ {
+    ((this +((row -> col) -> forwardConversion(true))) ++ {
       ((row - 1) to (row + 1)).flatMap {
         r: Int =>
           ((col - 1) to (col + 1)).map {
-            c: Int => ((r, c), false)
+            c: Int => ((r, c), forwardConversion(false))
           }
       }
     }).rowsAndCols().regions()
@@ -54,7 +79,7 @@ class PartialStarBattleGrid private(val puzzle: StarBattlePuzzle,
       val numBlanks = sectionVals.values.count { b => !b }
 
       if (numStars == puzzle.numStars) {
-        this ++ section.map { indices => indices -> false }
+        this ++ section.map { indices => indices -> forwardConversion(false) }
       }
       else if (numBlanks == puzzle.numCols - puzzle.numStars) {
         section.filter
@@ -113,7 +138,7 @@ class PartialStarBattleGrid private(val puzzle: StarBattlePuzzle,
     {
       case (r, c) =>
         List(this.star(r, c).rowsAndCols().regions(),
-             (this + ((r, c), false)).rowsAndCols().regions())
+             (this + ((r -> c) -> forwardConversion(false))).rowsAndCols().regions())
     }
   }
 
@@ -151,91 +176,6 @@ class PartialStarBattleGrid private(val puzzle: StarBattlePuzzle,
 
     nextGuesses(Queue(this))
   }
-
-  def isComplete: Boolean =
-  {
-    (0 until puzzle.numRows).flatMap
-    {
-      r => (0 until puzzle.numCols).map
-        {
-          c => (r, c)
-        }
-    }
-      .forall
-    {
-      case (r, c) => this.get(r, c).nonEmpty
-    }
-  }
-
-  def isPartiallyValid: Boolean =
-  {
-    lazy val adjacency =
-    {
-      val stars = this.values.filter{case ((r, c), t) => t}.keys
-
-      stars.forall
-      {
-        case (r, c) =>
-          ((r - 1) to (r + 1)).flatMap
-          {
-            row =>
-              ((c - 1) to (c + 1)).map
-              {
-                col => (row, col)
-              }
-          }
-            .flatMap{case (row, col) => this.get(row, col)}
-            .count(identity) == 1
-      }
-    }
-
-    lazy val rows =
-    {
-      (0 until puzzle.numRows).forall
-      {
-        row =>
-          val rowVals = (0 until puzzle.numCols).map
-          {
-            col => (row, col)
-          }
-            .flatMap{case (rowIndex, colIndex) => this.get(rowIndex, colIndex)}
-
-          (rowVals.count(identity) <= puzzle.numStars) &&
-            (rowVals.count{v => !v} <= puzzle.numCols - puzzle.numStars)
-      }
-    }
-
-    lazy val cols =
-    {
-      (0 until puzzle.numCols).forall
-      {
-        col =>
-          val colVals = (0 until puzzle.numRows).map
-          {
-            row => (row, col)
-          }
-            .flatMap{case (rowIndex, colIndex) => this.get(rowIndex, colIndex)}
-
-          (colVals.count(identity) <= puzzle.numStars) &&
-            (colVals.count{v => !v} <= puzzle.numRows - puzzle.numStars)
-      }
-    }
-
-    lazy val regions = puzzle.regions.forall
-    {
-      region =>
-        val regionVals = region.flatMap{case (row, col) => this.get(row, col)}
-        (regionVals.count(identity) <= puzzle.numStars) &&
-          (regionVals.count{v => !v} <= region.size - puzzle.numStars)
-    }
-
-    adjacency && rows && cols && regions
-  }
-
-    def isValid: Boolean =
-    {
-      this.isComplete && this.isPartiallyValid
-    }
 
     def printGrid(): Unit =
   {
