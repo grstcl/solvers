@@ -1,12 +1,10 @@
 package org.grstcl.solvers.starbattle
 
-import org.grstcl.solvers.Rule
-import org.grstcl.solvers.Puzzle
-import org.grstcl.solvers.PuzzleGrid
+import org.grstcl.solvers.{PuzzleGrid, Rule, Puzzle}
 
-object StarAdjacency extends Rule[Unit, StarBattlePuzzle]
+object StarAdjacency extends Rule[Unit, StarBattlePuzzle, StarBattleGrid]
 {
-  override def apply(grid: PuzzleGrid[Unit, StarBattlePuzzle]): Boolean =
+  override def apply(grid: StarBattleGrid): Boolean =
   {
     val starLocs = grid.flatMap
     {
@@ -31,9 +29,9 @@ object StarAdjacency extends Rule[Unit, StarBattlePuzzle]
   }
 }
 
-object RowsAndCols extends Rule[Unit, StarBattlePuzzle]
+object RowsAndCols extends Rule[Unit, StarBattlePuzzle, StarBattleGrid]
 {
-  def apply(grid: PuzzleGrid[Unit, StarBattlePuzzle]): Boolean =
+  def apply(grid: StarBattleGrid): Boolean =
   {
     val rows = (0 until grid.puzzle.numRows).forall
     {
@@ -65,9 +63,9 @@ object RowsAndCols extends Rule[Unit, StarBattlePuzzle]
   }
 }
 
-object Regions extends Rule[Unit, StarBattlePuzzle]
+object Regions extends Rule[Unit, StarBattlePuzzle, StarBattleGrid]
 {
-  override def apply(grid: PuzzleGrid[Unit, StarBattlePuzzle]): Boolean =
+  override def apply(grid: StarBattleGrid): Boolean =
   {
     grid.puzzle.regions.forall
     {
@@ -83,10 +81,14 @@ object Regions extends Rule[Unit, StarBattlePuzzle]
   }
 }
 
-case class StarBattlePuzzle(numStars: Int, numRows: Int, numCols: Int, regions: Iterable[Iterable[(Int, Int)]]) extends Puzzle[Unit, StarBattlePuzzle]
+case class StarBattlePuzzle(numStars: Int, numRows: Int, numCols: Int, regions: Iterable[Iterable[(Int, Int)]])
+  extends Puzzle[Unit, StarBattlePuzzle]
 {
+  override type G = StarBattleGrid
   def this(numStars: Int, dim: Int, regions: Iterable[Iterable[(Int, Int)]]) =
     this(numStars, dim, dim, regions)
 
   override def rules = Iterable(StarAdjacency, RowsAndCols, Regions)
+
+  override def possibleValues: Iterable[Unit] = Iterable(Unit)
 }
