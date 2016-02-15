@@ -2,9 +2,6 @@ package org.grstcl.solvers.nurikabe
 
 import org.grstcl.solvers.{Rule, Puzzle}
 
-import scala.annotation.tailrec
-import scala.collection.immutable.Queue
-
 object No2x2Black extends Rule[Unit, NurikabePuzzle, NurikabeGrid]
 {
   override def apply(grid: NurikabeGrid): Boolean =
@@ -30,61 +27,7 @@ object No2x2Black extends Rule[Unit, NurikabePuzzle, NurikabeGrid]
   }
 }
 
-abstract class ConnectingRule extends Rule[Unit, NurikabePuzzle, NurikabeGrid]
-{
-  def getConnectedThings(pos: (Int, Int), grid: NurikabeGrid): Set[(Int, Int)] =
-  {
-    val connectionType = grid.get(pos)
-
-    if (connectionType.isEmpty)
-    {
-      Set.empty[(Int, Int)]
-    }
-    else
-    {
-      val test =
-      {
-        if (connectionType.get.isEmpty)
-        {
-          v: Option[Unit] => v.isEmpty
-        }
-        else
-        {
-          v: Option[Unit] => v.nonEmpty
-        }
-      }
-
-      @tailrec
-      def getConnectedSquares(testSquares: Queue[(Int, Int)], connectedSquares: Set[(Int, Int)]): Set[(Int, Int)] =
-      {
-        if (testSquares.isEmpty)
-        {
-          connectedSquares
-        }
-        else
-        {
-          val (testRow, testCol) = testSquares.head
-
-          val newSquares = Iterable((testRow - 1, testCol),
-            (testRow + 1, testCol),
-            (testRow, testCol - 1),
-            (testRow, testCol + 1)).filter
-          {
-            case (r, c) => !connectedSquares.contains((r, c)) &&
-              grid.get(r, c).nonEmpty &&
-              test(grid.get(r, c).get)
-          }
-
-          getConnectedSquares(testSquares.drop(1) ++ newSquares, connectedSquares ++ Set((testRow, testCol)) ++ newSquares)
-        }
-      }
-
-      getConnectedSquares(Queue(pos), Set.empty[(Int, Int)])
-    }
-  }
-}
-
-object BlackConnected extends ConnectingRule
+object BlackConnected extends Rule[Unit, NurikabePuzzle, NurikabeGrid] with Connecting
 {
   override def apply(grid: NurikabeGrid): Boolean =
   {
@@ -109,7 +52,7 @@ object BlackConnected extends ConnectingRule
   }
 }
 
-object IslandsRule extends ConnectingRule
+object IslandsRule extends Rule[Unit, NurikabePuzzle, NurikabeGrid] with Connecting
 {
   override def apply(grid: NurikabeGrid): Boolean =
   {
